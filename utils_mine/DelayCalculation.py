@@ -79,7 +79,7 @@ class DelayCalculationLayer(nn.Module):
             out_channels = layer.out_channels
             kernel_size = layer.kernel_size
             stride = layer.stride
-            assert channels == in_channels #输入特征图的通道数必然等于算法层的输出通道数
+            assert channels == out_channels #输入特征图的通道数必然等于算法层的输出通道数,模型内调用input就是in,调用output就用out
 
             #计算fixed rowxcol情况下的计算延时
             #总共有多少次MAC计算

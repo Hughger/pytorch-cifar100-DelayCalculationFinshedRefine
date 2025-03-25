@@ -23,8 +23,8 @@ from utils import get_network, get_test_dataloader
 if __name__ == '__main__':
 
     parser = argparse.ArgumentParser()
-    parser.add_argument('-net', type=str, default='resnet34', help='net type')
-    parser.add_argument('-weights', type=str, default='./checkpoint/pretrained/resnet34-92-best.pth', help='the weights file you want to test')
+    parser.add_argument('-net', type=str, default='attention56', help='net type')
+    parser.add_argument('-weights', type=str, default='./checkpoint/pretrained/attention56-51-best.pth', help='the weights file you want to test')
     parser.add_argument('-gpu', action='store_true', default=True, help='use gpu or not')
     parser.add_argument('-b', type=int, default=1, help='batch size for dataloader')
     parser.add_argument('-quan', action='store_true', default=False, help='Quantiization Aware')

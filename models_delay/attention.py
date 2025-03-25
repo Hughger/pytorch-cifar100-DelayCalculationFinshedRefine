@@ -12,34 +12,35 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import pandas as pd
+import utils_mine.DelayCalculation as DEC  # 假设你有这个模块
 import utils_mine.DelayExpansion as DEX  # 假设你有这个模块
 
 #"""The Attention Module is built by pre-activation Residual Unit [11] with the
 #number of channels in each stage is the same as ResNet [10]."""
 
 
-class DelayExpansionConv2d(nn.Conv2d):
+class DelayCalculationConv2d(nn.Conv2d):
     def __init__(self, delay_layer, in_channels, out_channels, kernel_size, stride=1,
                  padding=0, dilation=1, groups=1, bias=True, padding_mode='zeros'):
-        super(DelayExpansionConv2d, self).__init__(
+        super(DelayCalculationConv2d, self).__init__(
             in_channels, out_channels, kernel_size, stride, padding, dilation,
             groups, bias, padding_mode)
         self.delay_layer = delay_layer
 
     def forward(self, input):
-        output = super(DelayExpansionConv2d, self).forward(input)
+        output = super(DelayCalculationConv2d, self).forward(input)
         batch_size = output.size(0)
         if output.dim() == 4:
             self.delay_layer(output, batch_size, self)
         return output
 
-class DelayExpansionLinear(nn.Linear):
+class DelayCalculationLinear(nn.Linear):
     def __init__(self, delay_layer, in_features, out_features, bias=True):
-        super(DelayExpansionLinear, self).__init__(in_features, out_features, bias)
+        super(DelayCalculationLinear, self).__init__(in_features, out_features, bias)
         self.delay_layer = delay_layer
 
     def forward(self, input):
-        output = super(DelayExpansionLinear, self).forward(input)
+        output = super(DelayCalculationLinear, self).forward(input)
         batch_size = output.size(0)
         if output.dim() == 2:
             self.delay_layer(output, batch_size, self)
@@ -59,19 +60,19 @@ class PreActResidualUnit(nn.Module):
             #1x1 conv
             nn.BatchNorm2d(in_channels),
             nn.ReLU(inplace=True),
-            DelayExpansionConv2d(delay_layer, in_channels, bottleneck_channels, 1, stride),
+            DelayCalculationConv2d(delay_layer, in_channels, bottleneck_channels, 1, stride),
             #3x3 conv
             nn.BatchNorm2d(bottleneck_channels),
             nn.ReLU(inplace=True),
-            DelayExpansionConv2d(delay_layer, bottleneck_channels, bottleneck_channels, 3, padding=1),
+            DelayCalculationConv2d(delay_layer, bottleneck_channels, bottleneck_channels, 3, padding=1),
             #1x1 conv
             nn.BatchNorm2d(bottleneck_channels),
             nn.ReLU(inplace=True),
-            DelayExpansionConv2d(delay_layer, bottleneck_channels, out_channels, 1)
+            DelayCalculationConv2d(delay_layer, bottleneck_channels, out_channels, 1)
         )
         self.shortcut = nn.Sequential()
         if stride != 2 or (in_channels != out_channels):
-            self.shortcut = DelayExpansionConv2d(delay_layer, in_channels, out_channels, 1, stride=stride)
+            self.shortcut = DelayCalculationConv2d(delay_layer, in_channels, out_channels, 1, stride=stride)
 
     def forward(self, x):
 
@@ -107,10 +108,10 @@ class AttentionModule1(nn.Module):
         self.sigmoid = nn.Sequential(
             nn.BatchNorm2d(out_channels),
             nn.ReLU(inplace=True),
-            DelayExpansionConv2d(delay_layer, out_channels, out_channels, kernel_size=1),
+            DelayCalculationConv2d(delay_layer, out_channels, out_channels, kernel_size=1),
             nn.BatchNorm2d(out_channels),
             nn.ReLU(inplace=True),
-            DelayExpansionConv2d(delay_layer, out_channels, out_channels, kernel_size=1),
+            DelayCalculationConv2d(delay_layer, out_channels, out_channels, kernel_size=1),
             nn.Sigmoid()
         )
 
@@ -200,10 +201,10 @@ class AttentionModule2(nn.Module):
         self.sigmoid = nn.Sequential(
             nn.BatchNorm2d(out_channels),
             nn.ReLU(inplace=True),
-            DelayExpansionConv2d(delay_layer, out_channels, out_channels, kernel_size=1),
+            DelayCalculationConv2d(delay_layer, out_channels, out_channels, kernel_size=1),
             nn.BatchNorm2d(out_channels),
             nn.ReLU(inplace=True),
-            DelayExpansionConv2d(delay_layer, out_channels, out_channels, kernel_size=1),
+            DelayCalculationConv2d(delay_layer, out_channels, out_channels, kernel_size=1),
             nn.Sigmoid()
         )
 
@@ -274,10 +275,10 @@ class AttentionModule3(nn.Module):
         self.sigmoid = nn.Sequential(
             nn.BatchNorm2d(out_channels),
             nn.ReLU(inplace=True),
-            DelayExpansionConv2d(delay_layer, out_channels, out_channels, kernel_size=1),
+            DelayCalculationConv2d(delay_layer, out_channels, out_channels, kernel_size=1),
             nn.BatchNorm2d(out_channels),
             nn.ReLU(inplace=True),
-            DelayExpansionConv2d(delay_layer, out_channels, out_channels, kernel_size=1),
+            DelayCalculationConv2d(delay_layer, out_channels, out_channels, kernel_size=1),
             nn.Sigmoid()
         )
 
@@ -322,9 +323,9 @@ class Attention(nn.Module):
 
     def __init__(self, block_num, delay_data, class_num=100):
         super().__init__()
-        self.delay_layer = DEX.DelayExpansionLayer(delay_data)
+        self.delay_layer = DEC.DelayCalculationLayer()
         self.pre_conv = nn.Sequential(
-            DelayExpansionConv2d(self.delay_layer, 3, 64, kernel_size=3, stride=1, padding=1),
+            DelayCalculationConv2d(self.delay_layer, 3, 64, kernel_size=3, stride=1, padding=1),
             nn.BatchNorm2d(64),
             nn.ReLU(inplace=True)
         )
@@ -338,7 +339,7 @@ class Attention(nn.Module):
             PreActResidualUnit(self.delay_layer, 2048, 2048, 1)
         )
         self.avg = nn.AdaptiveAvgPool2d(1)
-        self.linear = DelayExpansionLinear(self.delay_layer, 2048, class_num)
+        self.linear = DelayCalculationLinear(self.delay_layer, 2048, class_num)
 
     def forward(self, x):
         x = self.pre_conv(x)
